@@ -17,8 +17,10 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
-$csvPath = ".\.github\workflows"
+$csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = $json.githubAuthToken
+$branchName = "main" #change to variable passed through workflow
+$manualDeployment = $json.manualDeployment
 
 if ([string]::IsNullOrEmpty($contentTypes)) {
     $contentTypes = "AnalyticsRule,Metadata"
@@ -38,8 +40,55 @@ function CreateAndPopulateCsv {
         Import-Csv $csvPath 
         Write-Output "Created csv file."       
     }
-    #populate csv by looping through files and inserting to dictionary 
+    #populate csv by looping through files and adding to csv
+    $Header = @{
+        "authorization" = "Bearer $githubAuthToken"
+    }
+    #get branch sha and use it to get tree with all commit sha and files (should be its own function)
+    $getBranchResponse = Invoke-RestMethod https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/branches -Headers $header
+    Write-Output $getBranchResponse
+    $branchSha = $getBranchResponse | ForEach-Object -Process {if ($_.name -eq $branchName) {$_.commit.sha}}
+    $treeUrl = "https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/git/trees/" + $branchSha + "?recursive=true"
+    $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
+    Write-Output $getTreeResponse
+
+    #add filename,sha to csv object
+    $csvTable = @{}
+    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$csvTable.Add($_.path, $_.sha)}}
+    #write csv object to csv file 
+    $csvTable.GetEnumerator() | foreach {
+        "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
+    }
 }
+
+#we need token provided by workflow run to push file, not installationtoken, will test later 
+function PushCsvToRepo {
+    #if exists, we need sha of csv file before pushing updated file. If new, no need 
+    $Header = @{
+        "authorization" = "Bearer $githubAuthToken"
+    }
+    $path = ".github/workflows/tracking_table.csv"
+    Write-Output $path
+    $createFileUrl = "https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/contents/$path"
+    $content = Get-Content -Path $csvPath | Out-String
+    $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
+    Write-Output $encodedContent
+    $body = @{
+        message = "trackingTable.csv created."
+        content = $encodedContent
+        branch = $branchName
+    }
+
+    $Parameters = @{
+        Method      = "PUT"
+        Uri         = $createFileUrl
+        Headers     = $Header
+        Body        = $body | ConvertTo-Json
+    }
+    #Commit csv file
+    Invoke-RestMethod @Parameters
+}
+
 
 function AttemptAzLogin($psCredential, $tenantId, $cloudEnv) {
     $maxLoginRetries = 3
@@ -182,15 +231,7 @@ function GenerateDeploymentName() {
     return "Sentinel_Deployment_$randomId"
 }
 
-function main() {
-    if ($CloudEnv -ne 'AzureCloud') 
-    {
-        Write-Output "Attempting Sign In to Azure Cloud"
-        ConnectAzCloud
-    }
-
-    Write-Output "Starting Deployment for Files in path: $Directory"
-
+function FullDeployment {
     if (Test-Path -Path $Directory) 
     {
         $totalFiles = 0;
@@ -231,4 +272,22 @@ function main() {
     }
 }
 
+function main() {
+    if ($CloudEnv -ne 'AzureCloud') 
+    {
+        Write-Output "Attempting Sign In to Azure Cloud"
+        ConnectAzCloud
+    }
+
+    if (-not (Test-Path $csvPath)) {
+        Write-Output "Starting Full Deployment for Files in path: $Directory"
+        CreateAndPopulateCsv
+        #TODO: push csv to repo
+        FullDeployment
+    }
+
+}
+
 main
+#CreateAndPopulateCsv
+#PushCsvToRepo
