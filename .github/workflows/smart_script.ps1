@@ -279,12 +279,13 @@ function main() {
         ConnectAzCloud
     }
 
-    if (-not (Test-Path $csvPath)) {
+    if ((-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")) {
         Write-Output "Starting Full Deployment for Files in path: $Directory"
         CreateAndPopulateCsv
         #TODO: push csv to repo
         FullDeployment
     }
+    #else run smart tracking
 
 }
 
