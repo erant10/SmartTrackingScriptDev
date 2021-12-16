@@ -1,7 +1,7 @@
 $csvPath = ".github\workflows\tracking_table.csv"
-$githubAuthToken = args[0]
-$githubRepository = $Env:Repository 
-$branchName = $Env:Branch
+$githubAuthToken = $Env:githubAuthToken
+$githubRepository = $Env:repository 
+$branchName = "testScript"
 
 function CreateAndPopulateCsv {
     if (!(Test-Path $csvPath)) {
