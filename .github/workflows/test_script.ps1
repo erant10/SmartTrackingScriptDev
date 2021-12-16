@@ -19,7 +19,6 @@ function GetCommitShaTable {
     $Header = @{
         "authorization" = "Bearer $githubAuthToken"
     }
-    Write-Output $githubRepository
     #get branch sha and use it to get tree with all commit shas and files 
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
@@ -58,8 +57,9 @@ function PushCsvToRepo {
 }
 
 function main {
-    CreateAndPopulateCsv
-    PushCsvToRepo
+    #CreateAndPopulateCsv
+    #PushCsvToRepo
+    Write-Output $githubRepository
 }
 
 main 
