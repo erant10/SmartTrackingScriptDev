@@ -35,4 +35,4 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
-          ./.github/workflows/smart_script.ps1
+          ./.github/workflows/test_script.ps1
