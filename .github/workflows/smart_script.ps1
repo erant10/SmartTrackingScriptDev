@@ -19,6 +19,7 @@ $contentTypeMapping = @{
 }
 $csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = $json.githubAuthToken
+$githubRepository = $json.githubRepository
 $branchName = "main" #change to variable passed through workflow
 $manualDeployment = $json.manualDeployment
 
@@ -36,29 +37,27 @@ $secondsBetweenAttempts = 5
 
 function CreateAndPopulateCsv {
     if (!(Test-Path $csvPath)) {
-        $newcsv = {} | Select "FILE_NAME","SHA" | Export-Csv $csvPath
-        Import-Csv $csvPath 
+        Add-Content -Path $csvPath -Value "FileName, CommitSha"
         Write-Output "Created csv file."       
     }
-    #populate csv by looping through files and adding to csv
+    $shaTable = GetCommitShaTable
+    #write all filename, sha to csv file  
+    $shaTable.GetEnumerator() | ForEach-Object {
+        "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
+    }
+}
+
+function GetCommitShaTable {
     $Header = @{
         "authorization" = "Bearer $githubAuthToken"
     }
-    #get branch sha and use it to get tree with all commit sha and files (should be its own function)
-    $getBranchResponse = Invoke-RestMethod https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/branches -Headers $header
-    Write-Output $getBranchResponse
-    $branchSha = $getBranchResponse | ForEach-Object -Process {if ($_.name -eq $branchName) {$_.commit.sha}}
-    $treeUrl = "https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/git/trees/" + $branchSha + "?recursive=true"
+    #get branch sha and use it to get tree with all commit shas and files 
+    $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
+    $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
     $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
-    Write-Output $getTreeResponse
-
-    #add filename,sha to csv object
-    $csvTable = @{}
-    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$csvTable.Add($_.path, $_.sha)}}
-    #write csv object to csv file 
-    $csvTable.GetEnumerator() | foreach {
-        "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
-    }
+    $shaTable = @{}
+    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$shaTable.Add($_.path, $_.sha)}}
+    return $shaTable
 }
 
 #we need token provided by workflow run to push file, not installationtoken, will test later 
@@ -231,6 +230,7 @@ function GenerateDeploymentName() {
     return "Sentinel_Deployment_$randomId"
 }
 
+#modify this function to handle both manual deployment and smart tracking 
 function FullDeployment {
     if (Test-Path -Path $Directory) 
     {
@@ -240,6 +240,7 @@ function FullDeployment {
         ForEach-Object {
             $path = $_.FullName
 	        try {
+                #if manual deployment run this code
 	            $totalFiles ++
                 $templateObject = Get-Content $path | Out-String | ConvertFrom-Json
                 if (-not (IsValidResourceType $templateObject))
@@ -253,6 +254,7 @@ function FullDeployment {
                 {
                     $totalFailed++
                 }
+                #else run
             }
 	        catch {
                 $totalFailed++
@@ -273,11 +275,11 @@ function FullDeployment {
 }
 
 function main() {
-    if ($CloudEnv -ne 'AzureCloud') 
-    {
-        Write-Output "Attempting Sign In to Azure Cloud"
-        ConnectAzCloud
-    }
+    # if ($CloudEnv -ne 'AzureCloud') 
+    # {
+    #     Write-Output "Attempting Sign In to Azure Cloud"
+    #     ConnectAzCloud
+    # }
 
     if ((-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")) {
         Write-Output "Starting Full Deployment for Files in path: $Directory"
@@ -286,9 +288,19 @@ function main() {
         FullDeployment
     }
     #else run smart tracking
+    else {
+        #Import-Csv -Path $csvPath
+        $mytable = Import-Csv -Path $csvPath
+        $HashTable=@{}
+        foreach($r in $mytable)
+        {
+            $HashTable[$r.FileName]=$r.CommitSha
+        }   
+        Write-Output $HashTable
+    }
 
 }
 
-main
-#CreateAndPopulateCsv
+#main
+CreateAndPopulateCsv
 #PushCsvToRepo
