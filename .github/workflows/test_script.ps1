@@ -1,5 +1,7 @@
 $csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = args[0]
+$githubRepository = $Env:Repository 
+$branchName = $Env:Branch
 
 function CreateAndPopulateCsv {
     if (!(Test-Path $csvPath)) {
@@ -58,3 +60,5 @@ function main {
     CreateAndPopulateCsv
     PushCsvToRepo
 }
+
+main 
