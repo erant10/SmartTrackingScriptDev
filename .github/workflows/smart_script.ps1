@@ -56,7 +56,14 @@ function GetCommitShaTable {
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
     $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
     $shaTable = @{}
-    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$shaTable.Add($Directory + $_.path, $_.sha)}}
+    $getTreeResponse.tree | ForEach-Object {
+        if ($_.path.Substring($_.path.Length-5) -eq ".json") 
+        {
+            #needs to be $workplace in real implementation
+            $truePath = ($Directory + "\" + $_.path).Replace("/", "\")
+            $shaTable.Add($truePath, $_.sha)
+        }
+    }
     return $shaTable
 }
 
