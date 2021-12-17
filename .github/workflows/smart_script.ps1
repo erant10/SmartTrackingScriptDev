@@ -56,7 +56,7 @@ function GetCommitShaTable {
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
     $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
     $shaTable = @{}
-    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$shaTable.Add($_.path, $_.sha)}}
+    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$shaTable.Add($Directory + $_.path, $_.sha)}}
     return $shaTable
 }
 
@@ -88,6 +88,15 @@ function PushCsvToRepo {
     Invoke-RestMethod @Parameters
 }
 
+function ReadCsvToTable {
+    $mytable = Import-Csv -Path $csvPath
+    $HashTable=@{}
+    foreach($r in $mytable)
+    {
+        $HashTable[$r.FileName]=$r.CommitSha
+    }   
+    return $HashTable    
+}
 
 function AttemptAzLogin($psCredential, $tenantId, $cloudEnv) {
     $maxLoginRetries = 3
@@ -284,26 +293,23 @@ function main() {
     if ((-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")) {
         Write-Output "Starting Full Deployment for Files in path: $Directory"
         CreateAndPopulateCsv
-        #TODO: push csv to repo
-        FullDeployment
+        #PushCsvToRepo
+        #FullDeployment
     }
     #else run smart tracking
     else {
-        #Import-Csv -Path $csvPath
-        $mytable = Import-Csv -Path $csvPath
-        $HashTable=@{}
-        foreach($r in $mytable)
-        {
-            $HashTable[$r.FileName]=$r.CommitSha
-        }   
-        Write-Output $HashTable
-    }
+        $localCsvTable = ReadCsvToTable
+        $remoteShaTable = GetCommitShaTable
 
+        Get-ChildItem -Path $Directory -Recurse -Filter *.json |
+        ForEach-Object {
+            $path = $_.FullName
+            Write-Output $path
+        }
+    }
 }
 
 #main
 #CreateAndPopulateCsv
 #PushCsvToRepo
-$testStr = "refs/heads/main"
-$testStr =$testStr.Replace("refs/heads/", "")
-Write-Output $testStr
+GetCommitShaTable

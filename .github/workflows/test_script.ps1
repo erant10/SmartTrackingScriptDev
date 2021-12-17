@@ -10,6 +10,7 @@ function CreateAndPopulateCsv {
         Write-Output "Created csv file."       
     }
     $shaTable = GetCommitShaTable
+    Write-Output $shaTable
     #write all filename, sha to csv file  
     $shaTable.GetEnumerator() | ForEach-Object {
         "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
@@ -25,7 +26,7 @@ function GetCommitShaTable {
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
     $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
     $shaTable = @{}
-    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$shaTable.Add($_.path, $_.sha)}}
+    $getTreeResponse.tree | ForEach-Object -Process {if ($_.path.Substring($_.path.Length-5) -eq ".json") {$shaTable.Add($githubRepository + $_.path, $_.sha)}}
     return $shaTable
 }
 
@@ -62,6 +63,11 @@ function main {
     CreateAndPopulateCsv
     PushCsvToRepo
 
+    Get-ChildItem -Path $Directory -Recurse -Filter *.json |
+    ForEach-Object {
+        $path = $_.FullName
+        Write-Output $path
+    }
 }
 
 main 
