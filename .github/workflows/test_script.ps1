@@ -1,7 +1,8 @@
 $csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = $Env:githubAuthToken
 $githubRepository = $Env:GITHUB_REPOSITORY
-$branchName = "testScript"
+$refName = $Env:GITHUB_REF
+$branchName = $refName.Replace("refs/heads/", "")
 
 function CreateAndPopulateCsv {
     if (!(Test-Path $csvPath)) {

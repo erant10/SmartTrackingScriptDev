@@ -302,5 +302,8 @@ function main() {
 }
 
 #main
-CreateAndPopulateCsv
+#CreateAndPopulateCsv
 #PushCsvToRepo
+$testStr = "refs/heads/main"
+$testStr =$testStr.Replace("refs/heads/", "")
+Write-Output $testStr
