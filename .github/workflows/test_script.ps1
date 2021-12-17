@@ -3,6 +3,7 @@ $githubAuthToken = $Env:githubAuthToken
 $githubRepository = $Env:GITHUB_REPOSITORY
 $refName = $Env:GITHUB_REF
 $branchName = $refName.Replace("refs/heads/", "")
+$workspace = $Env:GITHUB_WORKSPACE
 
 function CreateAndPopulateCsv {
     if (!(Test-Path $csvPath)) {
@@ -68,6 +69,7 @@ function main {
         $path = $_.FullName
         Write-Output $path
     }
+    Write-Output $workspace
 }
 
 main 
