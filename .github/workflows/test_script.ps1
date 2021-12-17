@@ -31,7 +31,7 @@ function GetCommitShaTable {
         if ($_.path.Substring($_.path.Length-5) -eq ".json") 
         {
             #needs to be $workplace in real implementation
-            $truePath = ($Directory + "\" + $_.path).Replace("/", "\")
+            $truePath = ($workspace + "\" + $_.path).Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
         }
     }
