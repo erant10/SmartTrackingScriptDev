@@ -84,7 +84,7 @@ function main {
     $shaTable = GetCommitShaTable $tree 
     WriteTableToCsv $shaTable
     # CreateAndPopulateCsv
-    PushCsvToRepo
+    PushCsvToRepo $tree
 
     Get-ChildItem -Path $Directory -Recurse -Filter *.json |
     ForEach-Object {
