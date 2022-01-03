@@ -5,18 +5,10 @@ $refName = $Env:GITHUB_REF
 $branchName = $refName.Replace("refs/heads/", "")
 $workspace = $Env:GITHUB_WORKSPACE
 
-function CreateAndPopulateCsv {
-    if (!(Test-Path $csvPath)) {
-        Add-Content -Path $csvPath -Value "FileName, CommitSha"
-        Write-Output "Created csv file."       
-    }
-    $shaTable = GetCommitShaTable
-    Write-Output $shaTable
-    #write all filename, sha to csv file  
-    $shaTable.GetEnumerator() | ForEach-Object {
-        "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
-    }
+$header = @{
+    "authorization" = "Bearer $githubAuthToken"
 }
+
 
 function WriteTableToCsv($shaTable) {
     if (Test-Path $csvPath) {
@@ -29,9 +21,6 @@ function WriteTableToCsv($shaTable) {
 }
 
 function GetCommitShaTable {
-    $Header = @{
-        "authorization" = "Bearer $githubAuthToken"
-    }
     #get branch sha and use it to get tree with all commit shas and files 
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
@@ -51,9 +40,6 @@ function GetCommitShaTable {
 #we need token provided by workflow run to push file, not installationtoken, will test later 
 function PushCsvToRepo {
     #if exists, we need sha of csv file before pushing updated file. If new, no need 
-    $Header = @{
-        "authorization" = "Bearer $githubAuthToken"
-    }
     $path = ".github/workflows/tracking_table.csv"
     Write-Output $path
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
@@ -69,7 +55,7 @@ function PushCsvToRepo {
     $Parameters = @{
         Method      = "PUT"
         Uri         = $createFileUrl
-        Headers     = $Header
+        Headers     = $header
         Body        = $body | ConvertTo-Json
     }
     #Commit csv file
