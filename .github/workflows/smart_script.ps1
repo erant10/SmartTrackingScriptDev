@@ -35,13 +35,18 @@ $resourceTypes = $contentTypes.Split(",") | ForEach-Object { $contentTypeMapping
 $MaxRetries = 3
 $secondsBetweenAttempts = 5
 
-function CreateAndPopulateCsv {
-    if (!(Test-Path $csvPath)) {
-        Add-Content -Path $csvPath -Value "FileName, CommitSha"
-        Write-Output "Created csv file."       
-    }
-    $shaTable = GetCommitShaTable
-    #write all filename, sha to csv file  
+function CreateCsv() {
+    if (Test-Path $csvPath) {
+        Clear-Content -Path $csvPath
+    }  
+    Add-Content -Path $csvPath -Value "FileName, CommitSha"
+}
+
+function WriteTableToCsv($shaTable) {
+    if (Test-Path $csvPath) {
+        Clear-Content -Path $csvPath
+    }  
+    Add-Content -Path $csvPath -Value "FileName, CommitSha"
     $shaTable.GetEnumerator() | ForEach-Object {
         "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
     }
@@ -67,7 +72,6 @@ function GetCommitShaTable {
     return $shaTable
 }
 
-#we need token provided by workflow run to push file, not installationtoken, will test later 
 function PushCsvToRepo {
     #if exists, we need sha of csv file before pushing updated file. If new, no need 
     $Header = @{
@@ -91,7 +95,6 @@ function PushCsvToRepo {
         Headers     = $Header
         Body        = $body | ConvertTo-Json
     }
-    #Commit csv file
     Invoke-RestMethod @Parameters
 }
 
@@ -178,7 +181,6 @@ function IsRetryable($deploymentName) {
         return $false
     }
 }
-
 function IsValidResourceType($template) {
     $isAllowedResources = $true
     $template.resources | ForEach-Object { 
@@ -246,8 +248,16 @@ function GenerateDeploymentName() {
     return "Sentinel_Deployment_$randomId"
 }
 
-#modify this function to handle both manual deployment and smart tracking 
-function FullDeployment {
+function CheckFullDeployment() {
+    $flag = $false
+    if ((-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")) {
+        $flag = $true
+    }
+    return $flag 
+}
+
+function Deployment($fullDeploymentFlag, $localCsvTable, $remoteShaTable) {
+    Write-Output "Starting Deployment for Files in path: $Directory"
     if (Test-Path -Path $Directory) 
     {
         $totalFiles = 0;
@@ -255,27 +265,33 @@ function FullDeployment {
         Get-ChildItem -Path $Directory -Recurse -Filter *.json |
         ForEach-Object {
             $path = $_.FullName
-	        try {
-                #if manual deployment run this code
-	            $totalFiles ++
-                $templateObject = Get-Content $path | Out-String | ConvertFrom-Json
+            $templateObject = Get-Content $path | Out-String | ConvertFrom-Json
+            #put this into try catch
+            try {
                 if (-not (IsValidResourceType $templateObject))
                 {
                     Write-Output "[Warning] Skipping deployment for $path. The file contains resources for content that was not selected for deployment. Please add content type to connection if you want this file to be deployed."
                     return
-                }
-                $deploymentName = GenerateDeploymentName
-                $isSuccess = AttemptDeployment $_.FullName $deploymentName $templateObject
-                if (-not $isSuccess) 
-                {
-                    $totalFailed++
-                }
-                #else run
+                }                
             }
-	        catch {
-                $totalFailed++
+            catch {
                 Write-Host "[Error] An error occurred while trying to deploy file $path. Exception details: $_"
-                Write-Host $_.ScriptStackTrace
+            }
+        
+            if ($fullDeploymentFlag) {
+                $result = FullDeployment $path $templateObject
+                # if (-not $result.isSuccess) {$totalFailed++}
+            }
+            else {
+                $result = SmartDeployment $localCsvTable $remoteShaTable $path $templateObject
+                $localCsvTable = $result.csvTable
+            }
+            #convert to global variables
+            if ($result.isSuccess -eq $false) {
+                $totalFailed++
+            }
+            if (-not $result.skip) {
+                $totalFiles++
             }
 	    }
         if ($totalFiles -gt 0 -and $totalFailed -gt 0) 
@@ -283,6 +299,7 @@ function FullDeployment {
             $err = "$totalFailed of $totalFiles deployments failed."
             Throw $err
         }
+        return $localCsvTable
     }
     else 
     {
@@ -290,33 +307,78 @@ function FullDeployment {
     }
 }
 
-function main() {
-    # if ($CloudEnv -ne 'AzureCloud') 
-    # {
-    #     Write-Output "Attempting Sign In to Azure Cloud"
-    #     ConnectAzCloud
-    # }
-
-    if ((-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")) {
-        Write-Output "Starting Full Deployment for Files in path: $Directory"
-        CreateAndPopulateCsv
-        #PushCsvToRepo
-        #FullDeployment
+function FullDeployment($path, $templateObject) {
+    try {
+        $deploymentName = GenerateDeploymentName
+        $isSuccess = AttemptDeployment $path $deploymentName $templateObject
+        $result = @{
+            skip = $false
+            isSuccess = $isSuccess
+        }        
+        return $result
     }
-    #else run smart tracking
-    else {
-        $localCsvTable = ReadCsvToTable
-        $remoteShaTable = GetCommitShaTable
+    catch {
+        Write-Host "[Error] An error occurred while trying to deploy file $path. Exception details: $_"
+        Write-Host $_.ScriptStackTrace
+    }   
+}
 
-        Get-ChildItem -Path $Directory -Recurse -Filter *.json |
-        ForEach-Object {
-            $path = $_.FullName
-            Write-Output $path
+function SmartDeployment($localCsvTable, $remoteShaTable, $path, $templateObject) {
+	try {
+        $skip = $false
+	    $existingSha = $localCsvTable[$path]
+        $remoteSha = $remoteShaTable[$path]
+        if ((!$existingSha) -or ($existingSha -ne $remoteSha)) {
+            $deploymentName = GenerateDeploymentName
+            $isSuccess = AttemptDeployment $path $deploymentName $templateObject    
+            $localCsvTable[$path] = $remoteSha
         }
+        else {
+            $skip = $true
+            $isSuccess = $null  
+        }
+        $result = @{
+            skip = $skip
+            isSuccess = $isSuccess
+            csvTable = $localCsvTable
+        }
+        return $result
+    }
+    catch {
+        Write-Host "[Error] An error occurred while trying to deploy file $path. Exception details: $_"
+        Write-Host $_.ScriptStackTrace
     }
 }
 
-#main
-#CreateAndPopulateCsv
-#PushCsvToRepo
-GetCommitShaTable
+function main() {
+    if ($CloudEnv -ne 'AzureCloud') 
+    {
+        Write-Output "Attempting Sign In to Azure Cloud"
+        ConnectAzCloud
+    }
+
+    $fullDeploymentFlag = CheckFullDeployment
+    Write-Output $fullDeploymentFlag
+
+    if (-not (Test-Path $csvPath)) {
+        Write-Output "Creating csv and conducting full deployment."
+        $remoteShaTable = GetCommitShaTable
+        WriteTableToCsv($remoteShaTable)
+        # PushCsvToRepo
+        Deployment $fullDeploymentFlag $null $null
+    }
+    else {
+        $localCsvTable = ReadCsvToTable
+        $remoteShaTable = GetCommitShaTable
+        Write-Output "Local Csv Table"
+        Write-Output $localCsvTable
+        Write-Output "Remote Csv Table"
+        Write-Output $remoteShaTable
+        $updatedCsvTable = Deployment $fullDeploymentFlag $localCsvTable $remoteShaTable
+        WriteTableToCsv($updatedCsvTable)
+        #PushCsvToRepo
+    }
+}
+
+main
+

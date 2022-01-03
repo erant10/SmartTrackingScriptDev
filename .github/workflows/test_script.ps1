@@ -18,6 +18,16 @@ function CreateAndPopulateCsv {
     }
 }
 
+function WriteTableToCsv($shaTable) {
+    if (Test-Path $csvPath) {
+        Clear-Content -Path $csvPath
+    }  
+    Add-Content -Path $csvPath -Value "FileName, CommitSha"
+    $shaTable.GetEnumerator() | ForEach-Object {
+        "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
+    }
+}
+
 function GetCommitShaTable {
     $Header = @{
         "authorization" = "Bearer $githubAuthToken"
@@ -30,7 +40,7 @@ function GetCommitShaTable {
     $getTreeResponse.tree | ForEach-Object {
         if ($_.path.Substring($_.path.Length-5) -eq ".json") 
         {
-            #needs to be $workplace in real implementation
+            #needs to be $workspace in real implementation
             $truePath = ($workspace + "\" + $_.path).Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
         }
@@ -68,7 +78,9 @@ function PushCsvToRepo {
 
 function main {
     Write-Output $githubRepository
-    CreateAndPopulateCsv
+    $shaTable = GetCommitShaTable
+    WriteTableToCsv $shaTable
+    # CreateAndPopulateCsv
     PushCsvToRepo
 
     Get-ChildItem -Path $Directory -Recurse -Filter *.json |
