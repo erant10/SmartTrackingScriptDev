@@ -27,6 +27,17 @@ function GetGithubTree {
     return $getTreeResponse
 }
 
+function GetCsvCommitSha($getTreeResponse) {
+    $sha = $null
+    $getTreeResponse.tree | ForEach-Object {
+        if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
+        {
+            $sha = $_.sha 
+        }
+    }
+    return $sha 
+}
+
 function GetCommitShaTable($getTreeResponse) {
     #get branch sha and use it to get tree with all commit shas and files 
     $shaTable = @{}
@@ -41,10 +52,11 @@ function GetCommitShaTable($getTreeResponse) {
 }
 
 #we need token provided by workflow run to push file, not installationtoken, will test later 
-function PushCsvToRepo {
+function PushCsvToRepo($getTreeResponse) {
     #if exists, we need sha of csv file before pushing updated file. If new, no need 
     $path = ".github/workflows/tracking_table.csv"
     Write-Output $path
+    $sha = GetCsvCommitSha $getTreeResponse
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = Get-Content -Path $csvPath | Out-String
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
@@ -53,7 +65,7 @@ function PushCsvToRepo {
         message = "trackingTable.csv created."
         content = $encodedContent
         branch = $branchName
-        sha = $null
+        sha = $sha
     }
 
     $Parameters = @{
