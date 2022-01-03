@@ -56,7 +56,7 @@ function PushCsvToRepo {
     }
     $path = ".github/workflows/tracking_table.csv"
     Write-Output $path
-    $createFileUrl = "https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/contents/$path"
+    $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = Get-Content -Path $csvPath | Out-String
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
     Write-Output $encodedContent
