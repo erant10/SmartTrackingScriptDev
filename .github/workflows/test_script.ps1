@@ -20,11 +20,15 @@ function WriteTableToCsv($shaTable) {
     }
 }
 
-function GetCommitShaTable {
-    #get branch sha and use it to get tree with all commit shas and files 
+function GetGithubTree {
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
     $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
+    return $getTreeResponse
+}
+
+function GetCommitShaTable($getTreeResponse) {
+    #get branch sha and use it to get tree with all commit shas and files 
     $shaTable = @{}
     $getTreeResponse.tree | ForEach-Object {
         if ($_.path.Substring($_.path.Length-5) -eq ".json") 
@@ -64,7 +68,8 @@ function PushCsvToRepo {
 
 function main {
     Write-Output $githubRepository
-    $shaTable = GetCommitShaTable
+    $tree = GetGithubTree
+    $shaTable = GetCommitShaTable $tree 
     WriteTableToCsv $shaTable
     # CreateAndPopulateCsv
     PushCsvToRepo

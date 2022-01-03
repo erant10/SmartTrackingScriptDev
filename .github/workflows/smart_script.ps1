@@ -20,8 +20,12 @@ $contentTypeMapping = @{
 $csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = $json.githubAuthToken
 $githubRepository = $json.githubRepository
-$branchName = "main" #change to variable passed through workflow
+$branchName = "testScript" #change to variable passed through workflow
 $manualDeployment = $json.manualDeployment
+
+$header = @{
+    "authorization" = "Bearer $githubAuthToken"
+}
 
 if ([string]::IsNullOrEmpty($contentTypes)) {
     $contentTypes = "AnalyticsRule,Metadata"
@@ -35,13 +39,6 @@ $resourceTypes = $contentTypes.Split(",") | ForEach-Object { $contentTypeMapping
 $MaxRetries = 3
 $secondsBetweenAttempts = 5
 
-function CreateCsv() {
-    if (Test-Path $csvPath) {
-        Clear-Content -Path $csvPath
-    }  
-    Add-Content -Path $csvPath -Value "FileName, CommitSha"
-}
-
 function WriteTableToCsv($shaTable) {
     if (Test-Path $csvPath) {
         Clear-Content -Path $csvPath
@@ -52,14 +49,30 @@ function WriteTableToCsv($shaTable) {
     }
 }
 
-function GetCommitShaTable {
-    $Header = @{
-        "authorization" = "Bearer $githubAuthToken"
-    }
-    #get branch sha and use it to get tree with all commit shas and files 
+function GetGithubTree {
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
     $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
+    return $getTreeResponse
+}
+
+function GetCsvCommitSha($getTreeResponse) {
+    $sha = $null
+    $getTreeResponse.tree | ForEach-Object {
+        if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
+        {
+            $sha = $_.sha 
+        }
+    }
+    return $sha 
+}
+
+function GetCommitShaTable($getTreeResponse) {
+    #get branch sha and use it to get tree with all commit shas and files 
+    # $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
+    # $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
+    # $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
+    # $getTreeResponse = GetGithubTree
     $shaTable = @{}
     $getTreeResponse.tree | ForEach-Object {
         if ($_.path.Substring($_.path.Length-5) -eq ".json") 
@@ -362,14 +375,14 @@ function main() {
 
     if (-not (Test-Path $csvPath)) {
         Write-Output "Creating csv and conducting full deployment."
-        $remoteShaTable = GetCommitShaTable
+        $remoteShaTable = GetCommitShaTable $tree
         WriteTableToCsv($remoteShaTable)
         # PushCsvToRepo
         Deployment $fullDeploymentFlag $null $null
     }
     else {
         $localCsvTable = ReadCsvToTable
-        $remoteShaTable = GetCommitShaTable
+        $remoteShaTable = GetCommitShaTable $tree
         Write-Output "Local Csv Table"
         Write-Output $localCsvTable
         Write-Output "Remote Csv Table"
