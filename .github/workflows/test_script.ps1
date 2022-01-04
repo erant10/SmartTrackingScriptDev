@@ -1,10 +1,11 @@
-$csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = $Env:githubAuthToken
 $githubRepository = $Env:GITHUB_REPOSITORY
 $refName = $Env:GITHUB_REF
 $branchName = $refName.Replace("refs/heads/", "")
 #$branchName = $Env:branch
 $workspace = $Env:GITHUB_WORKSPACE
+$sourceControlId = $Env:sourceControlId 
+$csvPath = ".github\workflows\tracking_table_$souceControlId.csv"
 
 $header = @{
     "authorization" = "Bearer $githubAuthToken"
@@ -58,7 +59,7 @@ function GetCommitShaTable($getTreeResponse) {
 #Pushes new/updated csv file to the user's repository. If updating file, will need csv commit sha. 
 #TODO: Add source control id to tracking_table name.
 function PushCsvToRepo($getTreeResponse) {
-    $path = ".github/workflows/tracking_table.csv"
+    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     Write-Output $path
     $sha = GetCsvCommitSha $getTreeResponse
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"

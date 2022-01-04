@@ -22,6 +22,7 @@ jobs:
     env: 
       repository: aaroncorreya/SmartTrackingScriptDev
       githubAuthToken: ${{ secrets.GITHUB_TOKEN }}
+      sourceControlId: "1234"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
