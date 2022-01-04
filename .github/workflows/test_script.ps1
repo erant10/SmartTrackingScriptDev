@@ -91,7 +91,7 @@ function main {
     WriteTableToCsv $shaTable
     PushCsvToRepo $tree
 
-    Get-ChildItem -Path $Directory -Recurse -Filter *.json |
+    Get-ChildItem -Path $workspace -Recurse -Filter *.json |
     ForEach-Object {
         $path = $_.FullName
         Write-Output $path
