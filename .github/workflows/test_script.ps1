@@ -51,9 +51,7 @@ function GetCommitShaTable($getTreeResponse) {
     return $shaTable
 }
 
-#we need token provided by workflow run to push file, not installationtoken, will test later 
 function PushCsvToRepo($getTreeResponse) {
-    #if exists, we need sha of csv file before pushing updated file. If new, no need 
     $path = ".github/workflows/tracking_table.csv"
     Write-Output $path
     $sha = GetCsvCommitSha $getTreeResponse
@@ -83,7 +81,6 @@ function main {
     $tree = GetGithubTree
     $shaTable = GetCommitShaTable $tree 
     WriteTableToCsv $shaTable
-    # CreateAndPopulateCsv
     PushCsvToRepo $tree
 
     Get-ChildItem -Path $Directory -Recurse -Filter *.json |
