@@ -90,7 +90,9 @@ function main {
     $shaTable = GetCommitShaTable $tree 
     WriteTableToCsv $shaTable
     PushCsvToRepo $tree
-
+    Write-Output "SHA TABLE"
+    Write-Output $shaTable
+    
     Get-ChildItem -Path $workspace -Recurse -Filter *.json |
     ForEach-Object {
         $path = $_.FullName
