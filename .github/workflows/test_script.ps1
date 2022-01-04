@@ -52,7 +52,7 @@ function GetCommitShaTable($getTreeResponse) {
 }
 
 function PushCsvToRepo($getTreeResponse) {
-    # $path = ".github/workflows/tracking_table.csv"
+    $path = ".github/workflows/tracking_table.csv"
     Write-Output $path
     $sha = GetCsvCommitSha $getTreeResponse
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
