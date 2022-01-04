@@ -3,13 +3,14 @@ $githubAuthToken = $Env:githubAuthToken
 $githubRepository = $Env:GITHUB_REPOSITORY
 $refName = $Env:GITHUB_REF
 $branchName = $refName.Replace("refs/heads/", "")
+#$branchName = $Env:branch
 $workspace = $Env:GITHUB_WORKSPACE
 
 $header = @{
     "authorization" = "Bearer $githubAuthToken"
 }
 
-
+#Writes sha dictionary object to csv file. Will delete any pre-existing content before writing.  
 function WriteTableToCsv($shaTable) {
     if (Test-Path $csvPath) {
         Clear-Content -Path $csvPath
@@ -20,6 +21,7 @@ function WriteTableToCsv($shaTable) {
     }
 }
 
+#Gets all files and commit shas using Get Trees API 
 function GetGithubTree {
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
@@ -27,6 +29,7 @@ function GetGithubTree {
     return $getTreeResponse
 }
 
+#Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
     $sha = $null
     $getTreeResponse.tree | ForEach-Object {
@@ -38,8 +41,8 @@ function GetCsvCommitSha($getTreeResponse) {
     return $sha 
 }
 
+#Creates a table using the reponse from the tree api, creates a table 
 function GetCommitShaTable($getTreeResponse) {
-    #get branch sha and use it to get tree with all commit shas and files 
     $shaTable = @{}
     $getTreeResponse.tree | ForEach-Object {
         if ($_.path.Substring($_.path.Length-5) -eq ".json") 
@@ -51,6 +54,8 @@ function GetCommitShaTable($getTreeResponse) {
     return $shaTable
 }
 
+#Pushes new/updated csv file to the user's repository. If updating file, will need csv commit sha. 
+#TODO: Add source control id to tracking_table name.
 function PushCsvToRepo($getTreeResponse) {
     $path = ".github/workflows/tracking_table.csv"
     Write-Output $path
@@ -72,7 +77,6 @@ function PushCsvToRepo($getTreeResponse) {
         Headers     = $header
         Body        = $body | ConvertTo-Json
     }
-    #Commit csv file
     Invoke-RestMethod @Parameters
 }
 
