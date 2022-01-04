@@ -372,6 +372,7 @@ function main() {
 
     $fullDeploymentFlag = CheckFullDeployment
     Write-Output $fullDeploymentFlag
+    $tree = GetGithubTree
 
     if (-not (Test-Path $csvPath)) {
         Write-Output "Creating csv and conducting full deployment."
