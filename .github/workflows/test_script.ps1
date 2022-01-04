@@ -5,7 +5,7 @@ $branchName = $refName.Replace("refs/heads/", "")
 #$branchName = $Env:branch
 $workspace = $Env:GITHUB_WORKSPACE
 $sourceControlId = $Env:sourceControlId 
-$csvPath = ".github\workflows\tracking_table_$souceControlId.csv"
+$csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
 
 $header = @{
     "authorization" = "Bearer $githubAuthToken"
