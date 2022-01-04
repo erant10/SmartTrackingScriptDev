@@ -45,7 +45,8 @@ function GetCsvCommitSha($getTreeResponse) {
 function GetCommitShaTable($getTreeResponse) {
     $shaTable = @{}
     $getTreeResponse.tree | ForEach-Object {
-        if ($_.path.Substring($_.path.Length-5) -eq ".json") 
+        #if ($_.path.Substring($_.path.Length-5) -eq ".json") 
+        if ([System.IO.Path]::GetExtension($_.path) -eq ".json")
         {
             $truePath = ($workspace + "\" + $_.path).Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
