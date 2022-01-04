@@ -17,11 +17,13 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
-$csvPath = ".github\workflows\tracking_table.csv"
+# $csvPath = ".github\workflows\tracking_table.csv"
 $githubAuthToken = $json.githubAuthToken
 $githubRepository = $json.githubRepository
 $branchName = "testScript" #change to variable passed through workflow
 $manualDeployment = $json.manualDeployment
+$sourceControlId = $json.sourceControlId 
+$csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
 
 $header = @{
     "authorization" = "Bearer $githubAuthToken"
@@ -58,8 +60,10 @@ function GetGithubTree {
 
 function GetCsvCommitSha($getTreeResponse) {
     $sha = $null
+    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     $getTreeResponse.tree | ForEach-Object {
-        if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
+        Write-Output $_.path
+        if ($_.path -eq $path)
         {
             $sha = $_.sha 
         }
@@ -90,7 +94,7 @@ function PushCsvToRepo {
     $Header = @{
         "authorization" = "Bearer $githubAuthToken"
     }
-    $path = ".github/workflows/tracking_table.csv"
+    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     Write-Output $path
     $createFileUrl = "https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/contents/$path"
     $content = Get-Content -Path $csvPath | Out-String
@@ -392,6 +396,9 @@ function main() {
         WriteTableToCsv($updatedCsvTable)
         #PushCsvToRepo
     }
+    # Write-Output $tree
+    # $sha = GetCsvCommitSha $tree 
+    # Write-Output $sha
 }
 
 main

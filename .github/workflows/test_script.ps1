@@ -33,8 +33,10 @@ function GetGithubTree {
 #Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
     $sha = $null
+    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     $getTreeResponse.tree | ForEach-Object {
-        if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
+        #if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
+        if ($_.path -eq $path)
         {
             $sha = $_.sha 
         }
