@@ -3,7 +3,7 @@ $githubRepository = $Env:GITHUB_REPOSITORY
 $refName = $Env:GITHUB_REF
 $branchName = $refName.Replace("refs/heads/", "")
 #$branchName = $Env:branch
-$workspace = $Env:GITHUB_WORKSPACE
+$workspace = $Env:GITHUB_WORKSPACE + "\"
 $sourceControlId = $Env:sourceControlId 
 $csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
 
