@@ -32,16 +32,7 @@ function GetGithubTree {
 
 #Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
-    $sha = $null
-    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
-    $getTreeResponse.tree | ForEach-Object {
-        #if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
-        if ($_.path -eq $path)
-        {
-            $sha = $_.sha 
-        }
-    }
-    return $sha 
+    return $getTreeResponse.tree |  Where-Object { $_.path -eq ".github/workflows/tracking_table_$sourceControlId.csv" }
 }
 
 #Creates a table using the reponse from the tree api, creates a table 
@@ -94,6 +85,7 @@ function main {
     Write-Output "SHA TABLE"
     Write-Output $shaTable
 
+    #TODO: Make sure that the paths are the same when testing locally and remotely
     Get-ChildItem -Path $workspace -Recurse -Filter *.json |
     ForEach-Object {
         $path = $_.FullName.Replace($workspace, "")

@@ -283,6 +283,7 @@ function Deployment($fullDeploymentFlag, $localCsvTable, $remoteShaTable) {
         Get-ChildItem -Path $Directory -Recurse -Filter *.json |
         ForEach-Object {
             $path = $_.FullName
+            # $path = $_.FullName.Replace($workspace, "")
             $templateObject = Get-Content $path | Out-String | ConvertFrom-Json
             #put this into try catch
             try {
@@ -376,33 +377,36 @@ function main() {
     }
     $fullDeploymentFlag = CheckFullDeployment
 
-    if (-not (Test-Path $csvPath)) {
-        Write-Output "Creating csv and conducting full deployment."
-        $remoteShaTable = GetCommitShaTable $tree
-        WriteTableToCsv($remoteShaTable)
-        # PushCsvToRepo
-        Deployment $fullDeploymentFlag $null $null
+    # if (-not (Test-Path $csvPath)) {
+    #     Write-Output "Creating csv and conducting full deployment."
+    #     $remoteShaTable = GetCommitShaTable $tree
+    #     WriteTableToCsv($remoteShaTable)
+    #     # PushCsvToRepo
+    #     Deployment $fullDeploymentFlag $null $null
+    # }
+    # else {
+    #     $localCsvTable = ReadCsvToTable
+    #     $remoteShaTable = GetCommitShaTable $tree
+    #     Write-Output "Local Csv Table"
+    #     Write-Output $localCsvTable
+    #     Write-Output "Remote Csv Table"
+    #     Write-Output $remoteShaTable
+    #     $updatedCsvTable = Deployment $fullDeploymentFlag $localCsvTable $remoteShaTable
+    #     WriteTableToCsv($updatedCsvTable)
+    #     #PushCsvToRepo
+    # }
+    Get-ChildItem -Path $Directory -Recurse -Filter *.json |
+    ForEach-Object {
+        Write-Output $_.FullName.Replace($Directory + "\", "")
     }
-    else {
-        $localCsvTable = ReadCsvToTable
-        $remoteShaTable = GetCommitShaTable $tree
-        Write-Output "Local Csv Table"
-        Write-Output $localCsvTable
-        Write-Output "Remote Csv Table"
-        Write-Output $remoteShaTable
-        $updatedCsvTable = Deployment $fullDeploymentFlag $localCsvTable $remoteShaTable
-        WriteTableToCsv($updatedCsvTable)
-        #PushCsvToRepo
-    }
-    #make paths of both tables relative and the same 
 }
 
-# main
+main
 
-$fullDeploymentFlag = CheckFullDeployment
-Write-Output $fullDeploymentFlag
-$tree = GetGithubTree
-$remoteShaTable = GetCommitShaTable $tree
-$localCsvTable = ReadCsvToTable
-Write-Output $remoteShaTable
-Write-Output $localCsvTable
+# $fullDeploymentFlag = CheckFullDeployment
+# Write-Output $fullDeploymentFlag
+# $tree = GetGithubTree
+# $remoteShaTable = GetCommitShaTable $tree
+# $localCsvTable = ReadCsvToTable
+# Write-Output $remoteShaTable
+# Write-Output $localCsvTable

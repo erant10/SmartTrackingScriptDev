@@ -14,16 +14,12 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
-#TODO: Make path including sourceControlId for csv file
-$csvPath = ".github\workflows\tracking_table.csv"
+$sourceControlId = $Env:sourceControlId 
 $githubAuthToken = $Env:githubAuthToken
 $githubRepository = $Env:GITHUB_REPOSITORY
-$refName = $Env:GITHUB_REF
-$branchName = $refName.Replace("refs/heads/", "")
-$workspace = $Env:GITHUB_WORKSPACE
-$header = @{
-    "authorization" = "Bearer $githubAuthToken"
-}
+$branchName = $Env:branch
+$workspace = $Env:GITHUB_WORKSPACE + "\"
+$csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
 
 if ([string]::IsNullOrEmpty($contentTypes)) {
     $contentTypes = "AnalyticsRule,Metadata"
@@ -48,6 +44,10 @@ function WriteTableToCsv($shaTable) {
     }
 }
 
+$header = @{
+    "authorization" = "Bearer $githubAuthToken"
+}
+
 #Gets all files and commit shas using Get Trees API 
 function GetGithubTree {
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
@@ -59,8 +59,9 @@ function GetGithubTree {
 #Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
     $sha = $null
+    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     $getTreeResponse.tree | ForEach-Object {
-        if ($_.path.Substring($_.path.Length-4) -eq ".csv") 
+        if ($_.path -eq $path)
         {
             $sha = $_.sha 
         }
@@ -72,9 +73,9 @@ function GetCsvCommitSha($getTreeResponse) {
 function GetCommitShaTable($getTreeResponse) {
     $shaTable = @{}
     $getTreeResponse.tree | ForEach-Object {
-        if ($_.path.Substring($_.path.Length-5) -eq ".json") 
+    if ([System.IO.Path]::GetExtension($_.path) -eq ".json") 
         {
-            $truePath = ($workspace + "\" + $_.path).Replace("/", "\")
+            $truePath =  $_.path.Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
         }
     }
@@ -82,15 +83,13 @@ function GetCommitShaTable($getTreeResponse) {
 }
 
 #Pushes new/updated csv file to the user's repository. If updating file, will need csv commit sha. 
-#TODO: Add source control id to tracking_table name.
 function PushCsvToRepo($getTreeResponse) {
-    $path = ".github/workflows/tracking_table.csv"
-    Write-Output $path
+    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     $sha = GetCsvCommitSha $getTreeResponse
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = Get-Content -Path $csvPath | Out-String
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
-    Write-Output $encodedContent
+    
     $body = @{
         message = "trackingTable.csv created."
         content = $encodedContent
