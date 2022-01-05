@@ -51,7 +51,8 @@ function GetCommitShaTable($getTreeResponse) {
         #if ($_.path.Substring($_.path.Length-5) -eq ".json") 
         if ([System.IO.Path]::GetExtension($_.path) -eq ".json")
         {
-            $truePath = ($workspace + "\" + $_.path).Replace("/", "\")
+            #$truePath = ($workspace + "\" + $_.path).Replace("/", "\")
+            $truePath =  $_.path.Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
         }
     }
@@ -92,7 +93,7 @@ function main {
     PushCsvToRepo $tree
     Write-Output "SHA TABLE"
     Write-Output $shaTable
-    
+
     Get-ChildItem -Path $workspace -Recurse -Filter *.json |
     ForEach-Object {
         $path = $_.FullName

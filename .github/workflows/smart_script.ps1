@@ -82,7 +82,8 @@ function GetCommitShaTable($getTreeResponse) {
         if ($_.path.Substring($_.path.Length-5) -eq ".json") 
         {
             #needs to be $workplace in real implementation
-            $truePath = ($Directory + "\" + $_.path).Replace("/", "\")
+            # $truePath = ($Directory + "\" + $_.path).Replace("/", "\")
+            $truePath =  $_.path.Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
         }
     }
@@ -373,10 +374,7 @@ function main() {
         Write-Output "Attempting Sign In to Azure Cloud"
         ConnectAzCloud
     }
-
     $fullDeploymentFlag = CheckFullDeployment
-    Write-Output $fullDeploymentFlag
-    $tree = GetGithubTree
 
     if (-not (Test-Path $csvPath)) {
         Write-Output "Creating csv and conducting full deployment."
@@ -396,10 +394,15 @@ function main() {
         WriteTableToCsv($updatedCsvTable)
         #PushCsvToRepo
     }
-    # Write-Output $tree
-    # $sha = GetCsvCommitSha $tree 
-    # Write-Output $sha
+    #make paths of both tables relative and the same 
 }
 
-main
+# main
 
+$fullDeploymentFlag = CheckFullDeployment
+Write-Output $fullDeploymentFlag
+$tree = GetGithubTree
+$remoteShaTable = GetCommitShaTable $tree
+$localCsvTable = ReadCsvToTable
+Write-Output $remoteShaTable
+Write-Output $localCsvTable
