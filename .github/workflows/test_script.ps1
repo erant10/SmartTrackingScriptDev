@@ -96,7 +96,7 @@ function main {
 
     Get-ChildItem -Path $workspace -Recurse -Filter *.json |
     ForEach-Object {
-        $path = $_.FullName
+        $path = $_.FullName.Replace($workspace, "")
         Write-Output $path
     }
     Write-Output $workspace
