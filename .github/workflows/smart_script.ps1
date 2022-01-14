@@ -17,13 +17,14 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
-# $csvPath = ".github\workflows\tracking_table.csv"
+
 $githubAuthToken = $json.githubAuthToken
 $githubRepository = $json.githubRepository
-$branchName = "testScript" #change to variable passed through workflow
+$branchName = "main" #change to variable passed through workflow
 $manualDeployment = $json.manualDeployment
 $sourceControlId = $json.sourceControlId 
 $csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
+$global:localCsvTablefinal = @{}
 
 $header = @{
     "authorization" = "Bearer $githubAuthToken"
@@ -41,16 +42,20 @@ $resourceTypes = $contentTypes.Split(",") | ForEach-Object { $contentTypeMapping
 $MaxRetries = 3
 $secondsBetweenAttempts = 5
 
-function WriteTableToCsv($shaTable) {
-    if (Test-Path $csvPath) {
-        Clear-Content -Path $csvPath
-    }  
-    Add-Content -Path $csvPath -Value "FileName, CommitSha"
-    $shaTable.GetEnumerator() | ForEach-Object {
-        "{0},{1}" -f $_.Key, $_.Value | add-content -path $csvPath
+#Converts hashtable to string that can be set as content when pushing csv file
+function ConvertTableToString {
+    $output = "FileName, CommitSha`n"
+    $global:localCsvTablefinal.GetEnumerator() | ForEach-Object {
+        $output += "{0},{1}`n" -f $_.Key, $_.Value
     }
+    return $output
 }
 
+$header = @{
+    "authorization" = "Bearer $githubAuthToken"
+}
+
+#Gets all files and commit shas using Get Trees API 
 function GetGithubTree {
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
     $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
@@ -58,31 +63,17 @@ function GetGithubTree {
     return $getTreeResponse
 }
 
+#Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
-    $sha = $null
-    $path = ".github/workflows/tracking_table_$sourceControlId.csv"
-    $getTreeResponse.tree | ForEach-Object {
-        Write-Output $_.path
-        if ($_.path -eq $path)
-        {
-            $sha = $_.sha 
-        }
-    }
-    return $sha 
+    return $getTreeResponse.tree |  Where-Object { $_.path -eq ".github/workflows/tracking_table_$sourceControlId.csv" }
 }
 
+#Creates a table using the reponse from the tree api, creates a table 
 function GetCommitShaTable($getTreeResponse) {
-    #get branch sha and use it to get tree with all commit shas and files 
-    # $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header
-    # $treeUrl = "https://api.github.com/repos/$githubRepository/git/trees/" + $branchResponse.commit.sha + "?recursive=true"
-    # $getTreeResponse = Invoke-RestMethod $treeUrl -Headers $header
-    # $getTreeResponse = GetGithubTree
     $shaTable = @{}
     $getTreeResponse.tree | ForEach-Object {
-        if ($_.path.Substring($_.path.Length-5) -eq ".json") 
+    if ([System.IO.Path]::GetExtension($_.path) -eq ".json") 
         {
-            #needs to be $workplace in real implementation
-            # $truePath = ($Directory + "\" + $_.path).Replace("/", "\")
             $truePath =  $_.path.Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
         }
@@ -90,40 +81,47 @@ function GetCommitShaTable($getTreeResponse) {
     return $shaTable
 }
 
-function PushCsvToRepo {
-    #if exists, we need sha of csv file before pushing updated file. If new, no need 
-    $Header = @{
-        "authorization" = "Bearer $githubAuthToken"
-    }
+#Pushes new/updated csv file to the user's repository. If updating file, will need csv commit sha. 
+function PushCsvToRepo($getTreeResponse) {
     $path = ".github/workflows/tracking_table_$sourceControlId.csv"
-    Write-Output $path
-    $createFileUrl = "https://api.github.com/repos/aaroncorreya/SmartTrackingScriptDev/contents/$path"
-    $content = Get-Content -Path $csvPath | Out-String
+    $sha = GetCsvCommitSha $getTreeResponse
+    $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
+    $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
-    Write-Output $encodedContent
+    
     $body = @{
         message = "trackingTable.csv created."
         content = $encodedContent
         branch = $branchName
+        sha = $sha
     }
 
     $Parameters = @{
         Method      = "PUT"
         Uri         = $createFileUrl
-        Headers     = $Header
+        Headers     = $header
         Body        = $body | ConvertTo-Json
     }
     Invoke-RestMethod @Parameters
 }
 
 function ReadCsvToTable {
-    $mytable = Import-Csv -Path $csvPath
+    $csvTable = Import-Csv -Path $csvPath
     $HashTable=@{}
-    foreach($r in $mytable)
+    foreach($r in $csvTable)
     {
         $HashTable[$r.FileName]=$r.CommitSha
     }   
     return $HashTable    
+}
+
+#Checks and removes any deleted content files
+function CleanDeletedFilesFromTable {
+    $global:localCsvTablefinal.Clone().GetEnumerator() | ForEach-Object {
+        if (!(Test-Path -Path $_.Key)) {
+            $global:localCsvTablefinal.Remove($_.Key)
+        }
+    }
 }
 
 function AttemptAzLogin($psCredential, $tenantId, $cloudEnv) {
@@ -200,9 +198,15 @@ function IsRetryable($deploymentName) {
     }
 }
 function IsValidResourceType($template) {
-    $isAllowedResources = $true
-    $template.resources | ForEach-Object { 
-        $isAllowedResources = $resourceTypes.contains($_.type.ToLower()) -and $isAllowedResources
+    try {
+        $isAllowedResources = $true
+        $template.resources | ForEach-Object { 
+            $isAllowedResources = $resourceTypes.contains($_.type.ToLower()) -and $isAllowedResources
+        }
+    }
+    catch {
+        Write-Host "Failed to check valid resource type."
+        $isAllowedResources = $false
     }
     return $isAllowedResources
 }
@@ -266,59 +270,44 @@ function GenerateDeploymentName() {
     return "Sentinel_Deployment_$randomId"
 }
 
-function CheckFullDeployment() {
-    $flag = $false
-    if ((-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")) {
-        $flag = $true
-    }
-    return $flag 
-}
-
-function Deployment($fullDeploymentFlag, $localCsvTable, $remoteShaTable) {
-    Write-Output "Starting Deployment for Files in path: $Directory"
+function Deployment($fullDeploymentFlag, $remoteShaTable, $tree) {
+    Write-Host "Starting Deployment for Files in path: $Directory"
     if (Test-Path -Path $Directory) 
     {
         $totalFiles = 0;
         $totalFailed = 0;
         Get-ChildItem -Path $Directory -Recurse -Filter *.json |
         ForEach-Object {
-            $path = $_.FullName
-            # $path = $_.FullName.Replace($workspace, "")
+            $path = $_.FullName.Replace($Directory + "\", "")
             $templateObject = Get-Content $path | Out-String | ConvertFrom-Json
-            #put this into try catch
-            try {
-                if (-not (IsValidResourceType $templateObject))
-                {
-                    Write-Output "[Warning] Skipping deployment for $path. The file contains resources for content that was not selected for deployment. Please add content type to connection if you want this file to be deployed."
-                    return
-                }                
-            }
-            catch {
-                Write-Host "[Error] An error occurred while trying to deploy file $path. Exception details: $_"
-            }
-        
+            if (-not (IsValidResourceType $templateObject))
+            {
+                Write-Host "[Warning] Skipping deployment for $path. The file contains resources for content that was not selected for deployment. Please add content type to connection if you want this file to be deployed."
+                return
+            }                    
             if ($fullDeploymentFlag) {
                 $result = FullDeployment $path $templateObject
-                # if (-not $result.isSuccess) {$totalFailed++}
             }
             else {
-                $result = SmartDeployment $localCsvTable $remoteShaTable $path $templateObject
-                $localCsvTable = $result.csvTable
+                $result = SmartDeployment $remoteShaTable $path $templateObject
             }
-            #convert to global variables
             if ($result.isSuccess -eq $false) {
                 $totalFailed++
             }
             if (-not $result.skip) {
                 $totalFiles++
             }
-	    }
+            if ($result.isSuccess) {
+                $global:localCsvTablefinal[$path] = $remoteShaTable[$path]
+            }
+        }
+        CleanDeletedFilesFromTable
+        PushCsvToRepo $tree
         if ($totalFiles -gt 0 -and $totalFailed -gt 0) 
         {
             $err = "$totalFailed of $totalFiles deployments failed."
             Throw $err
         }
-        return $localCsvTable
     }
     else 
     {
@@ -329,12 +318,10 @@ function Deployment($fullDeploymentFlag, $localCsvTable, $remoteShaTable) {
 function FullDeployment($path, $templateObject) {
     try {
         $deploymentName = GenerateDeploymentName
-        $isSuccess = AttemptDeployment $path $deploymentName $templateObject
-        $result = @{
+        return @{
             skip = $false
-            isSuccess = $isSuccess
+            isSuccess = AttemptDeployment $path $deploymentName $templateObject
         }        
-        return $result
     }
     catch {
         Write-Host "[Error] An error occurred while trying to deploy file $path. Exception details: $_"
@@ -342,26 +329,23 @@ function FullDeployment($path, $templateObject) {
     }   
 }
 
-function SmartDeployment($localCsvTable, $remoteShaTable, $path, $templateObject) {
-	try {
+function SmartDeployment($remoteShaTable, $path, $templateObject) {
+    try {
         $skip = $false
-	    $existingSha = $localCsvTable[$path]
+        $existingSha = $global:localCsvTablefinal[$path]
         $remoteSha = $remoteShaTable[$path]
         if ((!$existingSha) -or ($existingSha -ne $remoteSha)) {
             $deploymentName = GenerateDeploymentName
             $isSuccess = AttemptDeployment $path $deploymentName $templateObject    
-            $localCsvTable[$path] = $remoteSha
         }
         else {
             $skip = $true
             $isSuccess = $null  
         }
-        $result = @{
+        return @{
             skip = $skip
             isSuccess = $isSuccess
-            csvTable = $localCsvTable
         }
-        return $result
     }
     catch {
         Write-Host "[Error] An error occurred while trying to deploy file $path. Exception details: $_"
@@ -375,38 +359,30 @@ function main() {
         Write-Output "Attempting Sign In to Azure Cloud"
         ConnectAzCloud
     }
-    $fullDeploymentFlag = CheckFullDeployment
 
-    # if (-not (Test-Path $csvPath)) {
-    #     Write-Output "Creating csv and conducting full deployment."
-    #     $remoteShaTable = GetCommitShaTable $tree
-    #     WriteTableToCsv($remoteShaTable)
-    #     # PushCsvToRepo
-    #     Deployment $fullDeploymentFlag $null $null
-    # }
-    # else {
-    #     $localCsvTable = ReadCsvToTable
-    #     $remoteShaTable = GetCommitShaTable $tree
-    #     Write-Output "Local Csv Table"
-    #     Write-Output $localCsvTable
-    #     Write-Output "Remote Csv Table"
-    #     Write-Output $remoteShaTable
-    #     $updatedCsvTable = Deployment $fullDeploymentFlag $localCsvTable $remoteShaTable
-    #     WriteTableToCsv($updatedCsvTable)
-    #     #PushCsvToRepo
-    # }
-    Get-ChildItem -Path $Directory -Recurse -Filter *.json |
-    ForEach-Object {
-        Write-Output $_.FullName.Replace($Directory + "\", "")
+    if (Test-Path $csvPath) {
+        $global:localCsvTablefinal = ReadCsvToTable
     }
+
+    $fullDeploymentFlag = (-not (Test-Path $csvPath)) -or ($manualDeployment -eq "true")
+    $tree = GetGithubTree
+    $remoteShaTable = GetCommitShaTable $tree
+    Deployment $fullDeploymentFlag $remoteShaTable $tree
 }
 
-main
+# main
 
-# $fullDeploymentFlag = CheckFullDeployment
-# Write-Output $fullDeploymentFlag
-# $tree = GetGithubTree
-# $remoteShaTable = GetCommitShaTable $tree
-# $localCsvTable = ReadCsvToTable
-# Write-Output $remoteShaTable
-# Write-Output $localCsvTable
+function ConvertTableToString($table) {
+    $output = ""
+    $output += "FileName, CommitSha`n"
+    $table.GetEnumerator() | ForEach-Object {
+        $output += "{0},{1}`n" -f $_.Key, $_.Value
+    }
+    Add-Content -path "output.txt" $output 
+}
+
+
+$tree = GetGithubTree
+$table = GetCommitShaTable $tree
+Write-Output $table
+ConvertTableToString $table

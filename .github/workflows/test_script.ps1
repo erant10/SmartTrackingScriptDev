@@ -94,4 +94,6 @@ function main {
     Write-Output $workspace
 }
 
-main 
+# main
+$table = GetCommitShaTable
+Write-Output $table 
