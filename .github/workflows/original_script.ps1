@@ -1,13 +1,10 @@
-#read variables from json for dev
-$json = (Get-Content "C:\One\SmartTrackingScriptDev\environment_df.json" -Raw) | ConvertFrom-Json
-Write-Output $json
 ## Globals ##
-$CloudEnv = $json.cloudEnv
-$ResourceGroupName = $json.resourceGroupName
-$WorkspaceName = $json.workspaceName
-$Directory = $json.directory
-$Creds = $json.creds
-$contentTypes = $json.contentTypes
+$CloudEnv = $Env:cloudEnv
+$ResourceGroupName = $Env:resourceGroupName
+$WorkspaceName = $Env:workspaceName
+$Directory = $Env:directory
+$Creds = $Env:creds
+$contentTypes = $Env:contentTypes
 $contentTypeMapping = @{
     "AnalyticsRule"=@("Microsoft.OperationalInsights/workspaces/providers/alertRules", "Microsoft.OperationalInsights/workspaces/providers/alertRules/actions");
     "AutomationRule"=@("Microsoft.OperationalInsights/workspaces/providers/automationRules");
@@ -17,13 +14,6 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
-$sourceControlId = $Env:sourceControlId 
-$githubAuthToken = $Env:githubAuthToken
-$githubRepository = $Env:GITHUB_REPOSITORY
-$branchName = $Env:branch
-$manualDeployment = $Env:manualDeployment
-$csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
-$global:localCsvTablefinal = @{}
 
 if ([string]::IsNullOrEmpty($contentTypes)) {
     $contentTypes = "AnalyticsRule,Metadata"
