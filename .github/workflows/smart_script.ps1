@@ -363,4 +363,7 @@ function main() {
     Deployment $fullDeploymentFlag $remoteShaTable $tree
 }
 
-main
+# main
+$tree = GetGithubTree
+$sha = GetCsvCommitSha
+Write-Output $sha
