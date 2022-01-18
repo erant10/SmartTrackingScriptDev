@@ -376,6 +376,6 @@ function main() {
 
 # main
 $tree = GetGithubTree
-$sha = GetCsvCommitSha
+Write-Output $tree
+$sha = GetCsvCommitSha $tree
 Write-Output $sha
-Write-Host $sha
