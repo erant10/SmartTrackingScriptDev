@@ -17,6 +17,13 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
+$sourceControlId = $Env:sourceControlId 
+$githubAuthToken = $Env:githubAuthToken
+$githubRepository = $Env:GITHUB_REPOSITORY
+$branchName = $Env:branch
+$manualDeployment = $Env:manualDeployment
+$csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
+$global:localCsvTablefinal = @{}
 
 if ([string]::IsNullOrEmpty($contentTypes)) {
     $contentTypes = "AnalyticsRule,Metadata"
