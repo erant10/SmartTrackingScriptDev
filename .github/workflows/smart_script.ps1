@@ -1,13 +1,10 @@
-#read variables from json for dev
-$json = (Get-Content "C:\One\SmartTrackingScriptDev\environment_df.json" -Raw) | ConvertFrom-Json
-Write-Output $json
 ## Globals ##
-$CloudEnv = $json.cloudEnv
-$ResourceGroupName = $json.resourceGroupName
-$WorkspaceName = $json.workspaceName
-$Directory = $json.directory
-$Creds = $json.creds
-$contentTypes = $json.contentTypes
+$CloudEnv = $Env:cloudEnv
+$ResourceGroupName = $Env:resourceGroupName
+$WorkspaceName = $Env:workspaceName
+$Directory = $Env:directory
+$Creds = $Env:creds
+$contentTypes = $Env:contentTypes
 $contentTypeMapping = @{
     "AnalyticsRule"=@("Microsoft.OperationalInsights/workspaces/providers/alertRules", "Microsoft.OperationalInsights/workspaces/providers/alertRules/actions");
     "AutomationRule"=@("Microsoft.OperationalInsights/workspaces/providers/automationRules");
@@ -17,18 +14,13 @@ $contentTypeMapping = @{
     "Workbook"=@("Microsoft.Insights/workbooks");
     "Metadata"=@("Microsoft.OperationalInsights/workspaces/providers/metadata");
 }
-
-$githubAuthToken = $json.githubAuthToken
-$githubRepository = $json.githubRepository
-$branchName = "main" #change to variable passed through workflow
-$manualDeployment = $json.manualDeployment
-$sourceControlId = $json.sourceControlId 
+$sourceControlId = $Env:sourceControlId 
+$githubAuthToken = $Env:githubAuthToken
+$githubRepository = $Env:GITHUB_REPOSITORY
+$branchName = $Env:branch
+$manualDeployment = $Env:manualDeployment
 $csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
 $global:localCsvTablefinal = @{}
-
-$header = @{
-    "authorization" = "Bearer $githubAuthToken"
-}
 
 if ([string]::IsNullOrEmpty($contentTypes)) {
     $contentTypes = "AnalyticsRule,Metadata"
@@ -197,6 +189,7 @@ function IsRetryable($deploymentName) {
         return $false
     }
 }
+
 function IsValidResourceType($template) {
     try {
         $isAllowedResources = $true
@@ -205,7 +198,7 @@ function IsValidResourceType($template) {
         }
     }
     catch {
-        Write-Host "Failed to check valid resource type."
+        Write-Host "[Error] Failed to check valid resource type."
         $isAllowedResources = $false
     }
     return $isAllowedResources
@@ -371,18 +364,3 @@ function main() {
 }
 
 main
-
-function ConvertTableToString($table) {
-    $output = ""
-    $output += "FileName, CommitSha`n"
-    $table.GetEnumerator() | ForEach-Object {
-        $output += "{0},{1}`n" -f $_.Key, $_.Value
-    }
-    Add-Content -path "output.txt" $output 
-}
-
-
-$tree = GetGithubTree
-$table = GetCommitShaTable $tree
-Write-Output $table
-ConvertTableToString $table

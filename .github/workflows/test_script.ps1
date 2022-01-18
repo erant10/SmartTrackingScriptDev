@@ -22,6 +22,15 @@ function WriteTableToCsv($shaTable) {
     }
 }
 
+#Converts hashtable to string that can be set as content when pushing csv file
+function ConvertTableToString {
+    $output = "FileName, CommitSha`n"
+    $global:localCsvTablefinal.GetEnumerator() | ForEach-Object {
+        $output += "{0},{1}`n" -f $_.Key, $_.Value
+    }
+    return $output
+}
+
 #Gets all files and commit shas using Get Trees API 
 function GetGithubTree {
     $branchResponse = Invoke-RestMethod https://api.github.com/repos/$githubRepository/branches/$branchName -Headers $header

@@ -27,7 +27,10 @@ jobs:
       cloudEnv: 'AzureCloud'
       creds: ${{ secrets.AZURE_SENTINEL_CREDENTIALS_c606f49231d04fd78323d0fb09a7fae3 }}
       contentTypes: 'AnalyticsRule'
+      branch: 'main'
+      sourceControlId: '1234'
       githubAuthToken: ${{ secrets.GITHUB_TOKEN }}
+      manualDeployment: 'false'
 
     steps:
     - name: Login to Azure (Attempt 1)
