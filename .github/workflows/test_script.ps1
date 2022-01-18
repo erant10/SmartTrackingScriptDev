@@ -44,6 +44,7 @@ function GetCommitShaTable($getTreeResponse) {
             $truePath =  $_.path.Replace("/", "\")
             $shaTable.Add($truePath, $_.sha)
             Write-Output $truePath
+            Write-Output $_.sha
         }
     }
     #Write-Output $shaTable
