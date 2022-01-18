@@ -95,5 +95,4 @@ function main {
 }
 
 # main
-$table = GetCommitShaTable
-Write-Output $table 
+Write-Output "HELLO WORLD"
