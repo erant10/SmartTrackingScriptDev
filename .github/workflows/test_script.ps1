@@ -96,3 +96,5 @@ function main {
 
 # main
 Write-Output "HELLO WORLD"
+$tree = GetGithubTree
+Write-Output $tree
