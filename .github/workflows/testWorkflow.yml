@@ -37,3 +37,10 @@ jobs:
       - name: Run script
         run: |
           ./.github/workflows/test_script.ps1
+
+      - name: Deploy Content to Azure Sentinel
+        uses: azure/powershell@v1
+        with:
+          azPSVersion: 'latest'
+          inlineScript: |
+            ".github/workflows/test_script.ps1"
