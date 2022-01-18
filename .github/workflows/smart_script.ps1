@@ -370,7 +370,7 @@ function main() {
     Deployment $fullDeploymentFlag $remoteShaTable $tree
 }
 
-# main
+main
 
 function ConvertTableToString($table) {
     $output = ""
