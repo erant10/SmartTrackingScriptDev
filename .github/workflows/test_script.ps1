@@ -67,6 +67,7 @@ function GetCommitShaTable($getTreeResponse) {
 function PushCsvToRepo($getTreeResponse) {
     $path = ".github\workflows\.sentinel\tracking_table_$sourceControlId.csv"
     $sha = GetCsvCommitSha $getTreeResponse
+    Write-Output "The sha is $sha"
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
