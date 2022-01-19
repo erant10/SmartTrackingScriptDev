@@ -103,8 +103,8 @@ function main {
 # main
 $tree = GetGithubTree 
 Write-Output $tree
-GetCommitShaTable $tree
-Write-Output $global:localCsvTablefinal
+$shaTable = GetCommitShaTable $tree
+Write-Output $shaTable
 $sha = GetCsvCommitSha $tree
 Write-Output $sha
 
