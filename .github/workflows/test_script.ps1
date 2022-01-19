@@ -104,4 +104,8 @@ function main {
     Write-Output $workspace
 }
 
-main
+# main
+$tree = GetGithubTree
+Write-Output $tree
+$shaTable = GetCommitShaTable $tree 
+Write-Output $shaTable
