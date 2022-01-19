@@ -105,6 +105,6 @@ $tree = GetGithubTree
 Write-Output $tree
 GetCommitShaTable $tree
 Write-Output $global:localCsvTablefinal
-$sha = GetCsvCommitSha 
+$sha = GetCsvCommitSha $tree
 Write-Output $sha
 
