@@ -101,6 +101,7 @@ function main {
 }
 
 # main
+$shaTable = @{}
 $tree = GetGithubTree 
 Write-Output $tree
 $shaTable = GetCommitShaTable $tree
