@@ -77,7 +77,6 @@ function PushCsvToRepo($getTreeResponse) {
         content = $encodedContent
         branch = $branchName
         sha = $sha
-        # accept = "application/vnd.github.v3+json" 
     }
 
     $Parameters = @{
@@ -100,5 +99,11 @@ function main {
     Write-Output $shaTable
 }
 
-main
+# main
+$tree = GetGithubTree 
+Write-Output $tree
+$shaTable = GetCommitShaTable $tree
+Write-Output $shaTable
+$sha = GetCsvCommitSha 
+Write-Output $sha
 
