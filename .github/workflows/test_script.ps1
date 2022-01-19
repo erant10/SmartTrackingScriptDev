@@ -86,7 +86,7 @@ function PushCsvToRepo($getTreeResponse) {
         Headers     = $header
         Body        = $body | ConvertTo-Json
     }
-    Write-Output $Parameters | Convert-String
+    Write-Output $Parameters | Out-String
     Invoke-RestMethod @Parameters
 }
 
