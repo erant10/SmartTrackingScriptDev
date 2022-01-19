@@ -26,7 +26,7 @@ function WriteTableToCsv($shaTable) {
 
 #Converts hashtable to string that can be set as content when pushing csv file
 function ConvertTableToString {
-    $output = "FileName1, CommitSha1`n"
+    $output = "FileName, CommitSha`n"
     $global:localCsvTablefinal.GetEnumerator() | ForEach-Object {
         $output += "{0},{1}`n" -f $_.Key, $_.Value
     }
@@ -43,7 +43,7 @@ function GetGithubTree {
 
 #Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
-    return $getTreeResponse.tree |  Where-Object { $_.path -eq ".github\workflows\tracking_table_$sourceControlId.csv" }
+    return $getTreeResponse.tree |  Where-Object { $_.path -eq ".github\workflows\.sentinel\tracking_table_$sourceControlId.csv" }
 }
 
 #Creates a table using the reponse from the tree api, creates a table 
@@ -65,7 +65,7 @@ function GetCommitShaTable($getTreeResponse) {
 #Pushes new/updated csv file to the user's repository. If updating file, will need csv commit sha. 
 #TODO: Add source control id to tracking_table name.
 function PushCsvToRepo($getTreeResponse) {
-    $path = ".github\workflows\tracking_table_$sourceControlId.csv"
+    $path = ".github\workflows\.sentinel\tracking_table_$sourceControlId.csv"
     $sha = GetCsvCommitSha $getTreeResponse
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
