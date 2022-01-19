@@ -66,7 +66,7 @@ function PushCsvToRepo($getTreeResponse) {
     $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     Write-Output $path
     # $sha = GetCsvCommitSha $getTreeResponse
-    $sha = "4124429db9826579d830095ca0dfd18578822a94"
+    $sha = $null
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
@@ -76,7 +76,7 @@ function PushCsvToRepo($getTreeResponse) {
         content = $encodedContent
         branch = $branchName
         sha = $sha
-        accept = "application/vnd.github.v3+json" 
+        # accept = "application/vnd.github.v3+json" 
     }
 
     $Parameters = @{
