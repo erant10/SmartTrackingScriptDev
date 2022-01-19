@@ -26,7 +26,7 @@ function WriteTableToCsv($shaTable) {
 
 #Converts hashtable to string that can be set as content when pushing csv file
 function ConvertTableToString {
-    $output = "FileName, CommitSha`n"
+    $output = "FileName1, CommitSha1`n"
     $global:localCsvTablefinal.GetEnumerator() | ForEach-Object {
         $output += "{0},{1}`n" -f $_.Key, $_.Value
     }
