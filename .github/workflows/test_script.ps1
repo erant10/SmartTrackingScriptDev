@@ -9,7 +9,8 @@ $csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
 $global:localCsvTablefinal = @{}
 
 $header = @{
-    "authorization" = "Bearer $githubAuthToken"
+    "authorization" = "Bearer $githubAuthToken",
+    "Content-Type" = "application/json"
 }
 
 #Writes sha dictionary object to csv file. Will delete any pre-existing content before writing.  
