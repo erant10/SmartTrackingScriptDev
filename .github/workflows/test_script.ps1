@@ -65,7 +65,8 @@ function GetCommitShaTable($getTreeResponse) {
 function PushCsvToRepo($getTreeResponse) {
     $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     Write-Output $path
-    $sha = GetCsvCommitSha $getTreeResponse
+    # $sha = GetCsvCommitSha $getTreeResponse
+    $sha = "4124429db9826579d830095ca0dfd18578822a94"
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
