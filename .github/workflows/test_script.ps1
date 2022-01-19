@@ -76,6 +76,7 @@ function PushCsvToRepo($getTreeResponse) {
         content = $encodedContent
         branch = $branchName
         sha = $sha
+        accept = "application/vnd.github.v3+json" 
     }
 
     $Parameters = @{
