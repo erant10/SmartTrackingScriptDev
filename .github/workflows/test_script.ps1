@@ -66,10 +66,11 @@ function PushCsvToRepo($getTreeResponse) {
     $path = ".github/workflows/tracking_table_$sourceControlId.csv"
     Write-Output $path
     # $sha = GetCsvCommitSha $getTreeResponse
-    $sha = $null
+    $sha = "70c379b63ffa0795fdbfbc128e5a2818397b7ef8"
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
-    $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
+    # $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
+    $encodedContent = "SGVsbG8gd29ybGQgbmV3"
     Write-Output $encodedContent
     $body = @{
         message = "trackingTable.csv created."
