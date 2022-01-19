@@ -43,9 +43,7 @@ function GetGithubTree {
 
 #Gets blob commit sha of the csv file, used when updating csv file to repo 
 function GetCsvCommitSha($getTreeResponse) {
-    $res = $getTreeResponse.tree |  Where-Object { $_.path -eq ".github/workflows/tracking_table_$sourceControlId.csv" }
-    Write-Output "the sha for tracking table is $res"
-    return $res
+    return $getTreeResponse.tree |  Where-Object { $_.path -eq ".github/workflows/tracking_table_$sourceControlId.csv" }
 }
 
 #Creates a table using the reponse from the tree api, creates a table 
@@ -69,6 +67,7 @@ function GetCommitShaTable($getTreeResponse) {
 function PushCsvToRepo($getTreeResponse) {
     $path = "tracking_table_$sourceControlId.csv"
     $sha = GetCsvCommitSha $getTreeResponse
+    Write-Output "the sha for tracking table is $sha"
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
