@@ -21,7 +21,7 @@ jobs:
     runs-on: windows-latest
     env: 
       repository: aaroncorreya/SmartTrackingScriptDev
-      githubAuthToken: ${{ secrets.GITHUB_TOKEN }}
+      githubAuthToken: ${{ secrets.PERSONALTOKEN }}
       sourceControlId: "1234"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
