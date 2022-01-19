@@ -6,6 +6,7 @@ $branchName = $refName.Replace("refs/heads/", "")
 $workspace = $Env:GITHUB_WORKSPACE + "\"
 $sourceControlId = $Env:sourceControlId 
 $csvPath = ".github\workflows\tracking_table_$sourceControlId.csv"
+$global:localCsvTablefinal = @{}
 
 $header = @{
     "authorization" = "Bearer $githubAuthToken"
@@ -102,8 +103,8 @@ function main {
 # main
 $tree = GetGithubTree 
 Write-Output $tree
-$shaTable = GetCommitShaTable $tree
-Write-Output $shaTable
+GetCommitShaTable $tree
+Write-Output $global:localCsvTablefinal
 $sha = GetCsvCommitSha 
 Write-Output $sha
 
