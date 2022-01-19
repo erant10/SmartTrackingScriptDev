@@ -67,7 +67,7 @@ function PushCsvToRepo($getTreeResponse) {
     Write-Output $path
     $sha = GetCsvCommitSha $getTreeResponse
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
-    $content = Get-Content -Path $csvPath | Out-String
+    $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
     Write-Output $encodedContent
     $body = @{
@@ -90,22 +90,11 @@ function main {
     Write-Output $githubRepository
     $tree = GetGithubTree
     $shaTable = GetCommitShaTable $tree 
-    WriteTableToCsv $shaTable
+    $global:localCsvTablefinal = $shaTable
     PushCsvToRepo $tree
     Write-Output "SHA TABLE"
     Write-Output $shaTable
-
-    #TODO: Make sure that the paths are the same when testing locally and remotely
-    Get-ChildItem -Path $workspace -Recurse -Filter *.json |
-    ForEach-Object {
-        $path = $_.FullName.Replace($workspace, "")
-        Write-Output $path
-    }
-    Write-Output $workspace
 }
 
-# main
-$tree = GetGithubTree
-Write-Output $tree
-$shaTable = GetCommitShaTable $tree 
-Write-Output $shaTable
+main
+
