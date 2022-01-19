@@ -25,7 +25,7 @@ function WriteTableToCsv($shaTable) {
 
 #Converts hashtable to string that can be set as content when pushing csv file
 function ConvertTableToString {
-    $output = "FileName, CommitSha`n"
+    $output = "FileName1, CommitSha1`n"
     $global:localCsvTablefinal.GetEnumerator() | ForEach-Object {
         $output += "{0},{1}`n" -f $_.Key, $_.Value
     }
@@ -65,9 +65,7 @@ function GetCommitShaTable($getTreeResponse) {
 #TODO: Add source control id to tracking_table name.
 function PushCsvToRepo($getTreeResponse) {
     $path = ".github/workflows/tracking_table_$sourceControlId.csv"
-    Write-Output $path
     $sha = GetCsvCommitSha $getTreeResponse
-    #$sha = "70c379b63ffa0795fdbfbc128e5a2818397b7ef8"
     $createFileUrl = "https://api.github.com/repos/$githubRepository/contents/$path"
     $content = ConvertTableToString
     $encodedContent = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
