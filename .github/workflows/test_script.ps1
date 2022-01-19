@@ -77,7 +77,7 @@ function PushCsvToRepo($getTreeResponse) {
         message = "trackingTable.csv created."
         content = $encodedContent
         branch = $branchName
-        sha = $sha.sha
+        sha = $sha
     }
 
     $Parameters = @{
